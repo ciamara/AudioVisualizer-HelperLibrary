@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36301.6 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudioVisualiser", "AudioVisualiser\AudioVisualiser.csproj", "{20ED52C8-FDB8-4CA3-824B-0E03D5356E18}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{20ED52C8-FDB8-4CA3-824B-0E03D5356E18}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20ED52C8-FDB8-4CA3-824B-0E03D5356E18}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20ED52C8-FDB8-4CA3-824B-0E03D5356E18}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20ED52C8-FDB8-4CA3-824B-0E03D5356E18}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C798300D-C22B-4A3B-A0EE-507880555134}
+	EndGlobalSection
+EndGlobal

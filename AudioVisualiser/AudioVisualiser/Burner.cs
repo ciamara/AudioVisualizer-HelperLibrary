@@ -19,7 +19,7 @@ namespace AudioHelpers
         /// </summary>
         /// <param name="source">mp3 file directory</param>
         /// <param name="volumeLabel">disc name</param>
-        public async Task BurnCD(string source, string volumeLabel)
+        public static async Task BurnCD(string source, string volumeLabel)
         {
             await Task.Run(() =>
             {

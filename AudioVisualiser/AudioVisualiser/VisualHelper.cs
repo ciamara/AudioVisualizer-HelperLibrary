@@ -11,7 +11,7 @@ using Windows.Storage.Streams;
 using Windows.UI;
 using WinRT;
 
-namespace AudioVisualiser
+namespace AudioHelpers
 {
     public class VisualHelper
     {
@@ -110,6 +110,22 @@ namespace AudioVisualiser
             byte b = (byte)Convert.ToUInt32(hex.Substring(4, 2), 16);
 
             return Color.FromArgb(255, r, g, b);
+        }
+
+        public static bool IsColorLight(Windows.UI.Color color)
+        {
+            double brightness = (0.299 * color.R) + (0.587 * color.G) + (0.114 * color.B);
+
+            return brightness > 128;
+        }
+
+        public static Color LightenColor(Color color, double amount)
+        {
+            byte r = (byte)(color.R + ((255 - color.R) * amount));
+            byte g = (byte)(color.G + ((255 - color.G) * amount));
+            byte b = (byte)(color.B + ((255 - color.B) * amount));
+
+            return Windows.UI.Color.FromArgb(color.A, r, g, b);
         }
     }
 }

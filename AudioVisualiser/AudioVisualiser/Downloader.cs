@@ -8,7 +8,7 @@ using YoutubeExplode;
 using YoutubeExplode.Videos.Streams;
 using YoutubeExplode.Converter;
 
-namespace AudioVisualiser
+namespace AudioHelpers
 {
     public class Downloader
     {
@@ -23,6 +23,8 @@ namespace AudioVisualiser
                 var video = await youtube.Videos.GetAsync(url);
 
                 var title = video.Title;
+                var author = video.Author.ChannelTitle;
+                var date = video.UploadDate;
 
                 foreach (var invalidChar in Path.GetInvalidFileNameChars())
                 {

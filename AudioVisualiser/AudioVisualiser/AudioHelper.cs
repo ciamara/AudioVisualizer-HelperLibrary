@@ -108,6 +108,33 @@ namespace AudioHelpers
             }
         }
 
+        // removes potentially problematic symbols and indexes filenames for correct playback order
+        public static string Sanitize(string filename, uint index)
+        {
+            string num = index.ToString();
+            if (index < 10)
+            {
+                num = "0" + num;
+            }
+
+            string sanitized = "";
+            System.Text.StringBuilder result = new System.Text.StringBuilder();
+            sanitized = Path.GetFileName(filename);
+
+            foreach (char c in sanitized)
+            {
+                if (char.IsLetterOrDigit(c) || c == '.')
+                {
+                    result.Append(c);
+                }
+            }
+            result.Insert(0, "_");
+            result.Insert(0, num);
+            Console.WriteLine($"{result}");
+
+            return result.ToString();
+        }
+
         public void Dispose()
         {
             _reader?.Dispose();

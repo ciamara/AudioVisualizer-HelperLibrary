@@ -10,9 +10,9 @@ namespace AudioHelpers
 {
     public class Burner
     {
-        public event EventHandler<string> StatusUpdated;
-        public event EventHandler<Exception> BurnError;
-        public event EventHandler BurnCompleted;
+        public static event EventHandler<string> StatusUpdated;
+        public static event EventHandler<Exception> BurnError;
+        public static event EventHandler BurnCompleted;
 
         /// <summary>
         /// burns mp3 directory into cd
@@ -30,11 +30,30 @@ namespace AudioHelpers
 
                 try
                 {
+                    discMaster = new MsftDiscMaster2();
 
+                    if (discMaster.Count == 0)
+                    {
+                        Console.WriteLine("No disc recorders.");
+                        return;
+                    }
+
+                    string recorderUniqueId = (string)discMaster[0];
+
+                    discRecorder = new MsftDiscRecorder2();
+                    discRecorder.InitializeDiscRecorder(recorderUniqueId);
+
+
+                    Console.WriteLine($"Active disc recorder: {discRecorder.ActiveDiscRecorder}");
+
+                    foreach(string mountPoint in discRecorder.VolumePathNames)
+                    {
+                        Console.WriteLine($"Mount point: {mountPoint}");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    BurnError?.Invoke(this, ex);
+                    BurnError?.Invoke(null, ex);
                 }
                 finally
                 {

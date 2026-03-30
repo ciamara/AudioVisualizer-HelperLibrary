@@ -11,16 +11,16 @@ namespace AudioHelpers
 {
     public class Burner
     {
-        public static event EventHandler<string> StatusUpdated;
-        public static event EventHandler<Exception> BurnError;
-        public static event EventHandler BurnCompleted;
+        public static event EventHandler<string> StatusUpdated = delegate { };
+    public static event EventHandler<Exception> BurnError = delegate { };
+        public static event EventHandler BurnCompleted = delegate { };
 
         /// <summary>
         /// burns mp3 directory into cd
         /// </summary>
         /// <param name="source">mp3 file directory</param>
         /// <param name="volumeLabel">disc name</param>
-        public static async Task BurnCD(string source, string volumeLabel, string bootFilePath = null)
+        public static async Task BurnCD(string source, string volumeLabel)
         {
             await Task.Run(() =>
             {
@@ -138,25 +138,10 @@ namespace AudioHelpers
                             Console.WriteLine("Randomly-writable, hardware-defect ");
                             break;
                     }
-
                     //// file system image
                     //fileSystemImage = new MsftFileSystemImage();
                     //fileSystemImage.ChooseImageDefaults((IMAPI2FS.IDiscRecorder2)discRecorder);
                     //fileSystemImage.VolumeName = volumeLabel;
-
-                    //// boot image 
-
-                    //dynamic opts = new BootOptions();
-                    //opts.Manufacturer = "Microsoft";
-                    //opts.PlatformId = PlatformId.PlatformX86;
-                    //opts.Emulation = EmulationType.EmulationNone;
-
-                    //// steam
-                    //SHCreateStreamOnFileW(bootFilePath, STGM_READ, out bootStream);
-
-                    //opts.AssignBootImage(bootStream);
-                    //fileSystemImage.BootImageOptions = opts;
-
                     //fileSystemImage.Root.AddTree(source, false);
 
                     //// result image

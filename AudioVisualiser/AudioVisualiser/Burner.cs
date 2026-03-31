@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 using IMAPI2;
+using NAudio.Wave;
 using IMAPI2FS;
 
 namespace AudioHelpers
@@ -12,8 +14,16 @@ namespace AudioHelpers
     public class Burner
     {
         public static event EventHandler<string> StatusUpdated = delegate { };
-    public static event EventHandler<Exception> BurnError = delegate { };
+        public static event EventHandler<Exception> BurnError = delegate { };
         public static event EventHandler BurnCompleted = delegate { };
+
+        private const int BytesPerSector = 2352;
+
+        [DllImport("shlwapi.dll", EntryPoint = "SHCreateStreamOnFileW", CharSet = CharSet.Unicode, PreserveSig = true)]
+        private static extern int SHCreateStreamOnFile(string pszFile, uint grfMode, out IMAPI2.IStream ppstm);
+
+        private const uint STGM_READ = 0x00000000;
+        private const uint STGM_SHARE_DENY_WRITE = 0x00000020;
 
         /// <summary>
         /// burns mp3 directory into cd
@@ -24,128 +34,80 @@ namespace AudioHelpers
         {
             await Task.Run(() =>
             {
-                MsftDiscMaster2? discMaster = null;
-                MsftDiscRecorder2? discRecorder = null;
-                MsftFileSystemImage? fileSystemImage = null;
-                MsftDiscFormat2Data? discFormatData = null;
+                MsftDiscMaster2 discMaster = null;
+                MsftDiscRecorder2 discRecorder = null;
+                MsftDiscFormat2TrackAtOnce discFormatAudio = null;
 
                 try
                 {
-                    // checking drive support
                     discMaster = new MsftDiscMaster2();
-
-                    if (discMaster.Count == 0)
-                    {
-                        Console.WriteLine("No disc recorders.");
-                        return;
-                    }
+                    if (discMaster.Count == 0) throw new Exception("Brak napędów CD.");
 
                     string recorderUniqueId = (string)discMaster[0];
-
                     discRecorder = new MsftDiscRecorder2();
                     discRecorder.InitializeDiscRecorder(recorderUniqueId);
 
-                    Console.WriteLine($"Active disc recorder: {discRecorder.ActiveDiscRecorder}");
+                    discFormatAudio = new MsftDiscFormat2TrackAtOnce();
+                    discFormatAudio.Recorder = discRecorder;
+                    discFormatAudio.ClientName = "KithBurner";
 
-                    foreach(string mountPoint in discRecorder.VolumePathNames)
+                    StatusUpdated?.Invoke(null, "preparing cd...");
+                    discFormatAudio.PrepareMedia();
+
+                    // Sortujemy pliki, aby zachować kolejność zdefiniowaną przez indeksy w nazwach
+                    var files = Directory.GetFiles(source, "*.mp3").OrderBy(f => f).ToList();
+
+                    foreach (string file in files)
                     {
-                        Console.WriteLine($"Mount point: {mountPoint}");
+                        StatusUpdated?.Invoke(null, $"adding: {Path.GetFileName(file)}");
+
+                        string tempPcmPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".raw");
+
+                        try
+                        {
+                            PreparePcmFile(file, tempPcmPath);
+
+                            // Pobieramy w 100% zgodny i natywny IStream z systemu Windows
+                            int hResult = SHCreateStreamOnFile(tempPcmPath, STGM_READ | STGM_SHARE_DENY_WRITE, out IMAPI2.IStream audioStream);
+
+                            if (hResult != 0)
+                            {
+                                throw new Exception($"Nie udało się utworzyć strumienia COM dla pliku. HRESULT: {hResult}");
+                            }
+
+                            try
+                            {
+                                discFormatAudio.AddAudioTrack(audioStream);
+                            }
+                            finally
+                            {
+                                // Zwalniamy natywny obiekt COM, Windows zdejmie locka z pliku temp
+                                if (audioStream != null) Marshal.ReleaseComObject(audioStream);
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            throw new Exception($"Błąd podczas przetwarzania utworu {Path.GetFileName(file)}: {ex.Message}");
+                        }
+                        finally
+                        {
+                            // Opcjonalne sprzątanie plików .raw, jeżeli dysk systemowy jest pełny. 
+                            // Try-catch zapobiega przerwaniu w przypadku opóźnienia zwolnienia uchwytu przez Windows
+                            try
+                            {
+                                if (File.Exists(tempPcmPath)) File.Delete(tempPcmPath);
+                            }
+                            catch { }
+                        }
                     }
 
-                    // checking media support
-                    discFormatData = new MsftDiscFormat2Data();
-                    discFormatData.Recorder = discRecorder;
+                    StatusUpdated?.Invoke(null, "Zamykanie sesji (Finalizing)...");
+                    discFormatAudio.ReleaseMedia();
 
-                    if (discFormatData.IsRecorderSupported(discRecorder))
-                    {
-                        Console.WriteLine("Current recorder IS supported.");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Current recorder IS NOT supported.");
-                    }
+                    discRecorder.EjectMedia();
 
-                    if (discFormatData.IsCurrentMediaSupported(discRecorder))
-                    {
-                        Console.WriteLine("Current media IS supported.");
-                    }
-                    else
-                    {
-                        Console.WriteLine("Current media IS NOT supported.");
-                    }
-
-                    Console.WriteLine($"client name: {discFormatData.ClientName}");
-
-                    IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE mediaType = discFormatData.CurrentPhysicalMediaType;
-
-                    switch (mediaType)
-                    {
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_UNKNOWN:
-                            Console.WriteLine("Empty device or an unknown disc type.");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_CDROM:
-                            Console.WriteLine("CD-ROM");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_CDR:
-                            Console.WriteLine("CD-R");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_CDRW:
-                            Console.WriteLine("CD-RW");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DVDROM:
-                            Console.WriteLine("Read-only DVD drive and/or disc");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DVDRAM:
-                            Console.WriteLine("DVD-RAM");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DVDPLUSR:
-                            Console.WriteLine("DVD+R");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DVDPLUSRW:
-                            Console.WriteLine("DVD+RW");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DVDPLUSR_DUALLAYER:
-                            Console.WriteLine("DVD+R Dual Layer media");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DVDDASHR:
-                            Console.WriteLine("DVD-R");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DVDDASHRW:
-                            Console.WriteLine("DVD-RW");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DVDDASHR_DUALLAYER:
-                            Console.WriteLine("DVD-R Dual Layer media");
-                            break;
-
-                        case IMAPI2.IMAPI_MEDIA_PHYSICAL_TYPE.IMAPI_MEDIA_TYPE_DISK:
-                            Console.WriteLine("Randomly-writable, hardware-defect ");
-                            break;
-                    }
-                    //// file system image
-                    //fileSystemImage = new MsftFileSystemImage();
-                    //fileSystemImage.ChooseImageDefaults((IMAPI2FS.IDiscRecorder2)discRecorder);
-                    //fileSystemImage.VolumeName = volumeLabel;
-                    //fileSystemImage.Root.AddTree(source, false);
-
-                    //// result image
-                    //IFileSystemImageResult result = fileSystemImage.CreateResultImage();
-                    //IMAPI2.IStream imageStream = (IMAPI2.IStream)result.ImageStream;
-
-                    //// write
-                    //discFormatData.Write(imageStream);
-
-                    //BurnCompleted?.Invoke(null, EventArgs.Empty);
+                    Console.WriteLine("Burning ended.");
+                    BurnCompleted?.Invoke(null, EventArgs.Empty);
                 }
                 catch (Exception ex)
                 {
@@ -153,12 +115,45 @@ namespace AudioHelpers
                 }
                 finally
                 {
-                    if (discFormatData != null) Marshal.ReleaseComObject(discFormatData);
-                    if (fileSystemImage != null) Marshal.ReleaseComObject(fileSystemImage);
+                    if (discFormatAudio != null) Marshal.ReleaseComObject(discFormatAudio);
                     if (discRecorder != null) Marshal.ReleaseComObject(discRecorder);
                     if (discMaster != null) Marshal.ReleaseComObject(discMaster);
                 }
             });
+        }
+
+        private static void PreparePcmFile(string inputMp3, string outputRaw)
+        {
+            using (var reader = new AudioFileReader(inputMp3))
+            {
+                var targetFormat = new WaveFormat(44100, 16, 2);
+                using (var resampler = new MediaFoundationResampler(reader, targetFormat))
+                {
+                    resampler.ResamplerQuality = 60;
+
+                    using (var outStream = new FileStream(outputRaw, FileMode.Create, FileAccess.Write, FileShare.None))
+                    {
+                        byte[] buffer = new byte[targetFormat.AverageBytesPerSecond];
+                        int read;
+                        long totalBytesWritten = 0;
+
+                        while ((read = resampler.Read(buffer, 0, buffer.Length)) > 0)
+                        {
+                            outStream.Write(buffer, 0, read);
+                            totalBytesWritten += read;
+                        }
+
+                        // Wyrównanie do wielokrotności 2352 bajtów (wymóg specyfikacji CD-DA)
+                        int remainder = (int)(totalBytesWritten % BytesPerSector);
+                        if (remainder > 0)
+                        {
+                            int paddingNeeded = BytesPerSector - remainder;
+                            byte[] padding = new byte[paddingNeeded];
+                            outStream.Write(padding, 0, padding.Length);
+                        }
+                    }
+                }
+            }
         }
     }
 }

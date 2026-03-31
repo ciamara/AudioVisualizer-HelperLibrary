@@ -24,16 +24,10 @@ namespace AudioHelpers
         {
             await Task.Run(() =>
             {
-                MsftDiscMaster2 discMaster = null;
-                MsftDiscRecorder2 discRecorder = null;
-                MsftFileSystemImage fileSystemImage = null;
-                MsftDiscFormat2Data discFormatData = null;
-                IMAPI2.IStream bootStream = null;
-
-                [DllImport("shlwapi.dll", CharSet = CharSet.Unicode, ExactSpelling = true, PreserveSig = false)]
-                static extern void SHCreateStreamOnFileW(string fileName, uint mode, out IMAPI2.IStream stream);
-
-                const uint STGM_READ = 0x00000000;
+                MsftDiscMaster2? discMaster = null;
+                MsftDiscRecorder2? discRecorder = null;
+                MsftFileSystemImage? fileSystemImage = null;
+                MsftDiscFormat2Data? discFormatData = null;
 
                 try
                 {

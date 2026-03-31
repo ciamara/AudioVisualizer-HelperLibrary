@@ -12,7 +12,7 @@ namespace AudioHelpers
 {
     public class Downloader
     {
-        public static async Task Download(string url, IProgress<double> progress = null)
+        public static async Task Download(string url, IProgress<double>? progress = null)
         {
             if (!string.IsNullOrEmpty(url))
             {

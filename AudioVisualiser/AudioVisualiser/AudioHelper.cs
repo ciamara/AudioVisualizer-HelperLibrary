@@ -6,9 +6,9 @@ namespace AudioHelpers
 {
     public class AudioHelper : IDisposable
     {
-        private FileStream _fileStream;
-        private Mp3FileReader _reader;
-        private ISampleProvider _sampleProvider;
+        private FileStream? _fileStream;
+        private Mp3FileReader? _reader;
+        private ISampleProvider? _sampleProvider;
 
         private const int FftSize = 1024;
         private float[] _buffer = new float[FftSize * 2]; // stereo
@@ -35,13 +35,13 @@ namespace AudioHelpers
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"[AudioHelper] load error: {ex.Message}");
+                Console.WriteLine($"[AudioHelper] load error: {ex.Message}");
                 _reader = null;
                 _sampleProvider = null;
             }
         }
 
-        public float[] GetFft(TimeSpan position)
+        public float[]? GetFft(TimeSpan position)
         {
             if (_reader == null || _sampleProvider == null)
             {
@@ -103,7 +103,7 @@ namespace AudioHelpers
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"[AudioHelper] get fft error: {ex.Message}");
+                Console.WriteLine($"[AudioHelper] get fft error: {ex.Message}");
                 return null;
             }
         }

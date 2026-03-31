@@ -15,7 +15,7 @@ namespace AudioHelpers
 {
     public class VisualHelper
     {
-        public static async Task<SoftwareBitmap> GetBitmapFromIPicture(TagLib.IPicture cover)
+        public static async Task<SoftwareBitmap?> GetBitmapFromIPicture(TagLib.IPicture cover)
         {
             if (cover == null || cover.Data.Data == null) return null;
 

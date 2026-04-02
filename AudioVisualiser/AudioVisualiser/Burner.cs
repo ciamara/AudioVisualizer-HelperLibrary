@@ -41,7 +41,7 @@ namespace AudioHelpers
                 try
                 {
                     discMaster = new MsftDiscMaster2();
-                    if (discMaster.Count == 0) throw new Exception("Brak napędów CD.");
+                    if (discMaster.Count == 0) throw new Exception("no cd drive");
 
                     string recorderUniqueId = (string)discMaster[0];
                     discRecorder = new MsftDiscRecorder2();
@@ -54,7 +54,7 @@ namespace AudioHelpers
                     StatusUpdated?.Invoke(null, "preparing cd...");
                     discFormatAudio.PrepareMedia();
 
-                    // Sortujemy pliki, aby zachować kolejność zdefiniowaną przez indeksy w nazwach
+                    // sorting files for correct order
                     var files = Directory.GetFiles(source, "*.mp3").OrderBy(f => f).ToList();
 
                     foreach (string file in files)
@@ -67,32 +67,30 @@ namespace AudioHelpers
                         {
                             PreparePcmFile(file, tempPcmPath);
 
-                            // Pobieramy w 100% zgodny i natywny IStream z systemu Windows
                             int hResult = SHCreateStreamOnFile(tempPcmPath, STGM_READ | STGM_SHARE_DENY_WRITE, out IMAPI2.IStream audioStream);
 
                             if (hResult != 0)
                             {
-                                throw new Exception($"Nie udało się utworzyć strumienia COM dla pliku. HRESULT: {hResult}");
+                                throw new Exception($"com stream error: {hResult}");
                             }
 
                             try
                             {
+                                // add cd text
                                 discFormatAudio.AddAudioTrack(audioStream);
                             }
                             finally
                             {
-                                // Zwalniamy natywny obiekt COM, Windows zdejmie locka z pliku temp
+                                // releasing com 
                                 if (audioStream != null) Marshal.ReleaseComObject(audioStream);
                             }
                         }
                         catch (Exception ex)
                         {
-                            throw new Exception($"Błąd podczas przetwarzania utworu {Path.GetFileName(file)}: {ex.Message}");
+                            throw new Exception($"error processing file {Path.GetFileName(file)}: {ex.Message}");
                         }
                         finally
                         {
-                            // Opcjonalne sprzątanie plików .raw, jeżeli dysk systemowy jest pełny. 
-                            // Try-catch zapobiega przerwaniu w przypadku opóźnienia zwolnienia uchwytu przez Windows
                             try
                             {
                                 if (File.Exists(tempPcmPath)) File.Delete(tempPcmPath);
@@ -101,7 +99,7 @@ namespace AudioHelpers
                         }
                     }
 
-                    StatusUpdated?.Invoke(null, "Zamykanie sesji (Finalizing)...");
+                    StatusUpdated?.Invoke(null, "finalizing...");
                     discFormatAudio.ReleaseMedia();
 
                     discRecorder.EjectMedia();
@@ -143,7 +141,7 @@ namespace AudioHelpers
                             totalBytesWritten += read;
                         }
 
-                        // Wyrównanie do wielokrotności 2352 bajtów (wymóg specyfikacji CD-DA)
+                        //alignment to 2352
                         int remainder = (int)(totalBytesWritten % BytesPerSector);
                         if (remainder > 0)
                         {

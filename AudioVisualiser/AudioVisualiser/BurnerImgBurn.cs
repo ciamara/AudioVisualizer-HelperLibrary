@@ -15,6 +15,29 @@ namespace AudioHelpers
         public static event EventHandler BurnCompleted = delegate { };
 
         /// <summary>
+        /// Attempts to find the ImgBurn executable dynamically across standard install locations.
+        /// </summary>
+        /// <returns>The path to ImgBurn.exe, or an empty string if not found.</returns>
+        public static string GetImgBurnPath()
+        {
+            string[] possiblePaths = new string[]
+            {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), @"ImgBurn\ImgBurn.exe"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), @"ImgBurn\ImgBurn.exe")
+            };
+
+            foreach (var path in possiblePaths)
+            {
+                if (File.Exists(path))
+                {
+                    return path;
+                }
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
         /// Burns an MP3 directory to an Audio CD with CD-Text using ImgBurn.
         /// </summary>
         /// <param name="source">Directory containing MP3 files</param>
@@ -28,7 +51,7 @@ namespace AudioHelpers
             string author,
             bool isAlbum,
             string driveLetter,
-            string imgBurnPath = @"C:\Program Files (x86)\ImgBurn\ImgBurn.exe")
+            string imgBurnPath)
         {
             await Task.Run(() =>
             {

@@ -127,5 +127,14 @@ namespace AudioHelpers
 
             return Windows.UI.Color.FromArgb(color.A, r, g, b);
         }
+
+        public static Color DarkenColor(Color color, double amount)
+        {
+            byte r = (byte)(color.R - (color.R * amount));
+            byte g = (byte)(color.G - (color.G * amount));
+            byte b = (byte)(color.B - (color.B * amount));
+
+            return Windows.UI.Color.FromArgb(color.A, r, g, b);
+        }
     }
 }
